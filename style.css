@@ -2,28 +2,25 @@ body {
     margin: 0;
     padding: 0;
     font-family: 'Arial', sans-serif;
-    background-color: #ffffff; /* Чистый белый фон */
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    background-color: #ffffff; 
+    /* Убираем центрирование, так как теперь игра занимает всё пространство */
+    width: 100vw;
     height: 100vh;
-    overflow: hidden;
+    overflow: hidden; /* Убираем случайные полосы прокрутки */
 }
 
 .game-container {
     position: relative;
-    width: 640px;
-    height: 480px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    border-radius: 12px;
-    overflow: hidden;
+    width: 100vw;  /* Ширина 100% от экрана */
+    height: 100vh; /* Высота 100% от экрана */
+    /* Мы убрали скругление углов и тени, так как они не нужны в полноэкранном режиме */
 }
 
 #silhouette {
     position: absolute;
-    top: 20px;
-    left: 20px;
-    width: 150px;
+    top: 30px;
+    left: 30px;
+    width: 200px; /* Сделали силуэт немного больше, раз экран теперь большой */
     height: auto;
     z-index: 10;
     background: transparent;
@@ -31,25 +28,26 @@ body {
 
 #timer {
     position: absolute;
-    top: 20px;
-    right: 20px;
-    font-size: 32px;
+    top: 30px;
+    right: 30px;
+    font-size: 40px; /* Увеличили шрифт таймера */
     font-weight: bold;
     color: #000000;
     z-index: 10;
-    background: rgba(255, 255, 255, 0.8);
-    padding: 10px 20px;
-    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 15px 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); /* Добавили легкую тень для таймера, чтобы он выделялся на фоне видео */
 }
 
 #outputCanvas {
     width: 100%;
     height: 100%;
-    object-fit: cover;
-    transform: scaleX(-1); /* Отражаем камеру как в зеркале */
+    object-fit: cover; /* Эта команда делает так, чтобы видео заполняло весь экран без искажения пропорций (лишние края просто обрежутся) */
+    transform: scaleX(-1); /* Отражаем как в зеркале */
 }
 
-/* Стили для окна проигрыша */
+/* Стили для окна проигрыша остаются почти такими же */
 #gameOverScreen {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -61,19 +59,23 @@ body {
     z-index: 20;
 }
 
+#gameOverScreen h2 {
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
 .hidden {
     display: none !important;
 }
 
 button {
-    padding: 15px 30px;
-    font-size: 18px;
-    background-color: #000000; /* Контрастная черная кнопка */
+    padding: 15px 40px;
+    font-size: 24px;
+    background-color: #000000; 
     color: white;
     border: none;
     border-radius: 8px;
     cursor: pointer;
-    margin-top: 20px;
     transition: 0.3s;
 }
 
