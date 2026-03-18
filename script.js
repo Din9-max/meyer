@@ -121,6 +121,50 @@ const levels = [
 
             return rightHandOnHip && leftArmExtended && leftArmUp && legsApart;
         }
+    },
+    {
+        // УРОВЕНЬ 4: Старт бегуна / Глубокий выпад (Поза в профиль)
+        image: "pose4.png", 
+        timeAllowed: 15,    
+        checkPose: function(landmarks) {
+            const ls = landmarks[11], rs = landmarks[12]; // Плечи
+            const lw = landmarks[15], rw = landmarks[16]; // Запястья
+            const lh = landmarks[23], rh = landmarks[24]; // Бедра
+            const la = landmarks[27], ra = landmarks[28]; // Лодыжки
+
+            const pointsToCheck = [ls, rs, lw, rw, lh, rh, la, ra];
+            for (let i = 0; i < pointsToCheck.length; i++) {
+                // Порог видимости снижен до 0.4, так как в профиль одна сторона тела перекрывает другую
+                if (pointsToCheck[i].visibility < 0.4) return false; 
+            }
+
+            function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
+
+            // ВАЖНО: Новый расчет масштаба. Измеряем длину корпуса от плеч до бедер.
+            const torsoLength = (distance(ls, lh) + distance(rs, rh)) / 2;
+
+            // --- УСЛОВИЕ 1: Руки широко раскинуты (одна впереди, другая сзади) ---
+            // Расстояние между левым и правым запястьем должно быть больше длины туловища
+            const armsSpread = distance(lw, rw) > (torsoLength * 1.2);
+
+            // --- УСЛОВИЕ 2: Кисти не задраны вверх ---
+            // Обе кисти находятся ниже уровня плеч (по оси Y)
+            const handsBelowShoulders = (lw.y > ls.y) && (rw.y > rs.y);
+
+            // --- УСЛОВИЕ 3: Наклон корпуса вперед ---
+            // Плечи смещены по горизонтали (по оси X) относительно таза.
+            // Используем Math.abs, чтобы игрок мог смотреть как влево, так и вправо.
+            const torsoLeaning = Math.abs(ls.x - lh.x) > (torsoLength * 0.3);
+
+            // --- УСЛОВИЕ 4: Присед (согнутые колени) ---
+            // Расстояние по высоте (Y) от таза до лодыжек меньше, чем у стоящего человека.
+            const averageHipY = (lh.y + rh.y) / 2;
+            const averageAnkleY = (la.y + ra.y) / 2;
+            const kneesBent = Math.abs(averageHipY - averageAnkleY) < (torsoLength * 1.3);
+
+            // Поза засчитывается только если все 4 условия выполнены
+            return armsSpread && handsBelowShoulders && torsoLeaning && kneesBent;
+        }
     }
 ];
 
