@@ -63,30 +63,53 @@ const levels = [
     },
     {
         // УРОВЕНЬ 2: Уверенная А-стойка
-        image: "pose2.png", 
+       image: "pose6.png", // Твоя новая картинка
         timeAllowed: 15,    
         checkPose: function(landmarks) {
-            const leftShoulder = landmarks[11], rightShoulder = landmarks[12];
-            const leftWrist = landmarks[15], rightWrist = landmarks[16];
-            const leftHip = landmarks[23], rightHip = landmarks[24];
-            const leftAnkle = landmarks[27], rightAnkle = landmarks[28];
+            const ls = landmarks[11], rs = landmarks[12]; // Плечи
+            const lw = landmarks[15], rw = landmarks[16]; // Запястья
+            const lh = landmarks[23], rh = landmarks[24]; // Бедра
+            const lk = landmarks[25], rk = landmarks[26]; // Колени (добавили для проверки наклона)
 
-            const pointsToCheck = [leftShoulder, rightShoulder, leftWrist, rightWrist, leftHip, rightHip, leftAnkle, rightAnkle];
+            // Проверка видимости (0.4, так как поза в профиль и точки могут перекрываться)
+            const pointsToCheck = [ls, rs, lw, rw, lh, rh, lk, rk];
             for (let i = 0; i < pointsToCheck.length; i++) {
-                if (pointsToCheck[i].visibility < 0.5) return false;
+                if (pointsToCheck[i].visibility < 0.4) return false;
             }
 
-            const torsoUpright = (leftShoulder.y < leftHip.y) && (rightShoulder.y < rightHip.y);
-            const armsDown = (leftWrist.y > leftShoulder.y) && (rightWrist.y > rightShoulder.y);
+            function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
             
-            const anklesDistanceX = Math.abs(leftAnkle.x - rightAnkle.x);
-            const hipsDistanceX = Math.abs(leftHip.x - rightHip.x);
-            const legsApart = anklesDistanceX > (hipsDistanceX * 1.5);
+            // Длина туловища для масштаба
+            const torsoLength = (distance(ls, lh) + distance(rs, rh)) / 2;
 
-            const wristsDistanceX = Math.abs(leftWrist.x - rightWrist.x);
-            const armsSlightlyOut = wristsDistanceX > (hipsDistanceX * 1.2);
+            // Считаем среднюю высоту (Y) для плеч и бедер
+            const avgShoulderY = (ls.y + rs.y) / 2;
+            const avgHipY = (lh.y + rh.y) / 2;
 
-            return torsoUpright && armsDown && legsApart && armsSlightlyOut;
+            // --- УСЛОВИЕ 1: Сильный наклон корпуса вперед ---
+            // Когда человек стоит прямо, плечи намного выше бедер.
+            // В глубоком наклоне по вертикали (Y) плечи опускаются почти на уровень бедер.
+            const torsoBentForward = Math.abs(avgHipY - avgShoulderY) < (torsoLength * 0.7);
+
+            // Находим, какая рука внизу, а какая наверху (чтобы игрок мог повернуться любым боком)
+            // В координатах экрана Y увеличивается сверху вниз.
+            const lowestWrist = lw.y > rw.y ? lw : rw;   // Та, у которой Y больше
+            const highestWrist = lw.y < rw.y ? lw : rw;  // Та, у которой Y меньше
+
+            // --- УСЛОВИЕ 2: Одна рука тянется вниз ---
+            // Нижнее запястье должно быть явно ниже уровня бедер
+            const oneArmDown = lowestWrist.y > avgHipY;
+
+            // --- УСЛОВИЕ 3: Другая рука отведена назад/вверх ---
+            // Верхнее запястье должно быть поднято (выше или на уровне бедер)
+            const oneArmUp = highestWrist.y < (avgHipY + torsoLength * 0.2);
+
+            // --- УСЛОВИЕ 4: Руки широко разведены ---
+            // Расстояние по горизонтали (X) между нижним и верхним запястьем должно быть большим
+            const armsSpread = Math.abs(lowestWrist.x - highestWrist.x) > (torsoLength * 1.0);
+
+            // Поза засчитана!
+            return torsoBentForward && oneArmDown && oneArmUp && armsSpread;
         }
     },
     {
