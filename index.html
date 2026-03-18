@@ -11,19 +11,32 @@
 </head>
 <body>
 
+    <div id="startScreen" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Повтори позу</h2>
+            <p>Включай камеру, отойди подальше, чтобы тебя было видно в полный рост, и постарайся в точности повторить черный силуэт на экране.</p>
+            <p>С каждым разом времени будет все меньше!</p>
+            <button id="startBtn">Начать игру</button>
+        </div>
+    </div>
+
+    <div id="gameOverScreen" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>Время вышло!</h2>
+            <p>Ты не успел принять нужную позу.</p>
+            <button id="restartBtn">Попробовать снова</button>
+        </div>
+    </div>
+
     <div class="game-container">
-        <img id="silhouette" src="" alt="Повтори эту позу">
+        <div id="silhouette-container">
+            <img id="silhouette" src="" alt="Поза">
+        </div>
         
         <div id="timer">Ожидание...</div>
 
         <video id="videoElement" autoplay playsinline style="display: none;"></video>
-        
-        <canvas id="outputCanvas" width="640" height="480"></canvas>
-    </div>
-
-    <div id="gameOverScreen" class="hidden">
-        <h2>Ты проиграл!</h2>
-        <button id="restartBtn">Попробовать снова</button>
+        <canvas id="outputCanvas"></canvas>
     </div>
 
     <script src="script.js"></script>
