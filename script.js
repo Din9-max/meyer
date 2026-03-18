@@ -39,58 +39,63 @@ const levels = [
         image: "pose1.png",
         timeAllowed: 20,    
         checkPose: function(landmarks) {
-            const leftShoulder = landmarks[11], rightShoulder = landmarks[12];
-            const leftWrist = landmarks[15], rightWrist = landmarks[16]; 
-            const leftHip = landmarks[23], rightHip = landmarks[24];
-            const rightAnkle = landmarks[28], rightFoot = landmarks[32];  
+            const ls = landmarks[11], rs = landmarks[12]; // Плечи
+            const lw = landmarks[15], rw = landmarks[16]; // Запястья 
+            const lh = landmarks[23], rh = landmarks[24]; // Бедра
+            const ra = landmarks[28]; // Правая лодыжка
 
-            const pointsToCheck = [leftShoulder, rightShoulder, leftWrist, rightWrist, leftHip, rightHip, rightAnkle, rightFoot];
+            const pointsToCheck = [ls, rs, lw, rw, lh, rh, ra];
             for (let i = 0; i < pointsToCheck.length; i++) {
                 if (pointsToCheck[i].visibility < 0.5) return false; 
             }
 
-            function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
-            const bodyScale = (distance(leftShoulder, rightShoulder) + distance(leftHip, rightHip)) / 2;
+            function distance2D(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
+            const bodyScale = (distance2D(ls, rs) + distance2D(lh, rh)) / 2;
 
-            const wristAboveShoulder = leftWrist.y < leftShoulder.y;
-            const wristVerticallyAligned = Math.abs(leftWrist.x - leftShoulder.x) < (bodyScale * 0.5);
-            const rightWristBelowHip = rightWrist.y > rightHip.y;
-            const rightWristCloseToFoot = distance(rightWrist, rightAnkle) < (bodyScale * 2.0);
-            const shouldersAlignedCorrectly = leftShoulder.y < rightShoulder.y;
+            const wristAboveShoulder = lw.y < ls.y;
+            const wristVerticallyAligned = Math.abs(lw.x - ls.x) < (bodyScale * 0.5);
+            const rightWristBelowHip = rw.y > rh.y;
+            const rightWristCloseToFoot = distance2D(rw, ra) < (bodyScale * 2.0);
+            const shouldersAlignedCorrectly = ls.y < rs.y;
 
             return wristAboveShoulder && wristVerticallyAligned && rightWristBelowHip && rightWristCloseToFoot && shouldersAlignedCorrectly;
         }
     },
     {
-        // УРОВЕНЬ 2: Уверенная А-стойка
-        image: "pose2.png", 
+        // УРОВЕНЬ 2: Уверенная стойка, КОРПУС ПОВЕРНУТ ВПРАВО
+        image: "pose2.png", // <--- Здесь должна быть картинка стойки с легким поворотом
         timeAllowed: 15,    
         checkPose: function(landmarks) {
-            const leftShoulder = landmarks[11], rightShoulder = landmarks[12];
-            const leftWrist = landmarks[15], rightWrist = landmarks[16];
-            const leftHip = landmarks[23], rightHip = landmarks[24];
-            const leftAnkle = landmarks[27], rightAnkle = landmarks[28];
+            const ls = landmarks[11], rs = landmarks[12]; // Плечи
+            const lw = landmarks[15], rw = landmarks[16]; // Запястья
+            const lh = landmarks[23], rh = landmarks[24]; // Бедра
+            const la = landmarks[27], ra = landmarks[28]; // Лодыжки
 
-            const pointsToCheck = [leftShoulder, rightShoulder, leftWrist, rightWrist, leftHip, rightHip, leftAnkle, rightAnkle];
-            for (let i = 0; i < pointsToCheck.length; i++) {
-                if (pointsToCheck[i].visibility < 0.5) return false;
+            // 1. Базовая проверка видимости (чтобы все ключевые точки были в кадре)
+            const pointsToCheck = [ls, rs, lw, rw, lh, rh, la, ra];
+            for (let point of pointsToCheck) {
+                if (point.visibility < 0.5) return false;
             }
 
-            // Плечи выше бедер
-            const torsoUpright = (leftShoulder.y < leftHip.y) && (rightShoulder.y < rightHip.y);
-            // Запястья ниже плеч
-            const armsDown = (leftWrist.y > leftShoulder.y) && (rightWrist.y > rightShoulder.y);
-            
-            const anklesDistanceX = Math.abs(leftAnkle.x - rightAnkle.x);
-            const hipsDistanceX = Math.abs(leftHip.x - rightHip.x);
-            // Ноги расставлены (шире бедер)
-            const legsApart = anklesDistanceX > (hipsDistanceX * 1.5);
+            // 2. Базовая стойка (как на фото)
+            // Спина прямая (плечи выше бедер)
+            const torsoUpright = (ls.y < lh.y) && (rs.y < rh.y);
+            // Руки опущены вниз (запястья ниже плеч)
+            const armsDown = (lw.y > ls.y) && (rw.y > rs.y);
+            // Ноги расставлены (расстояние между лодыжками по X больше, чем между бедрами)
+            const legsApart = Math.abs(la.x - ra.x) > (Math.abs(lh.x - rh.x) * 1.5);
+            // Руки разведены не слишком широко (допуск 1.3 * ширина бедер)
+            const armsCorrectWidth = Math.abs(lw.x - rw.x) < (Math.abs(lh.x - rh.x) * 1.3);
 
-            const wristsDistanceX = Math.abs(leftWrist.x - rightWrist.x);
-            // Руки слегка отведены
-            const armsSlightlyOut = wristsDistanceX > (hipsDistanceX * 1.2);
+            // 3. ПОВОРОТ КОРПУСА ВПРАВО (Ключевое изменение)
+            // Сравниваем Z-координаты плеч. Z — это глубина (чем меньше, тем ближе к камере).
+            // При повороте вправо ЛЕВОЕ плечо (11) должно быть ближе к камере,
+            // а ПРАВОЕ плечо (12) — дальше.
+            // Добавим допуск (0.05), чтобы избежать срабатывания на шум камеры.
+            const turnedRight = (rs.z - ls.z) > 0.05;
 
-            return torsoUpright && armsDown && legsApart && armsSlightlyOut;
+            // Возвращаем true, только если выполнены ВСЕ условия
+            return torsoUpright && armsDown && legsApart && armsCorrectWidth && turnedRight;
         }
     }
 ];
@@ -106,7 +111,7 @@ function startLevel(index) {
     if (index >= levels.length) {
         timerDiv.innerText = "ПОБЕДА!";
         timerDiv.classList.remove('danger');
-        levelIndicator.style.opacity = '0'; // Скрываем индикатор
+        levelIndicator.style.opacity = '0'; 
         isGameOver = true;
         return;
     }
@@ -114,7 +119,6 @@ function startLevel(index) {
     currentLevelIndex = index;
     let levelConfig = levels[currentLevelIndex];
     
-    // Обновляем UI
     levelIndicator.style.opacity = '1';
     levelIndicator.innerText = `Уровень ${currentLevelIndex + 1} из ${levels.length}`;
     silhouetteImg.src = levelConfig.image;
@@ -127,12 +131,11 @@ function startLevel(index) {
         timeLeft--;
         updateTimerDisplay();
         
-        // Звуковое сопровождение
         if (timeLeft > 0) {
             if (timeLeft <= 10) {
-                playBeep(600, 0.15, 'triangle'); // Тревожный писк
+                playBeep(600, 0.15, 'triangle'); 
             } else {
-                playBeep(400, 0.1, 'sine');      // Спокойный тик
+                playBeep(400, 0.1, 'sine');      
             }
         }
         
@@ -155,11 +158,10 @@ function updateTimerDisplay() {
 function loseGame() {
     isGameOver = true;
     timerDiv.innerText = "0";
-    playBeep(200, 0.5, 'sawtooth'); // Звук проигрыша
+    playBeep(200, 0.5, 'sawtooth'); 
     gameOverScreen.classList.remove('hidden');
 }
 
-// --- 5. ОБРАБОТЧИКИ КНОПОК ---
 startBtn.addEventListener('click', () => {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     startScreen.classList.add('hidden');
@@ -173,7 +175,7 @@ restartBtn.addEventListener('click', () => {
     startLevel(0);
 });
 
-// --- 6. НЕЙРОСЕТЬ MEDIAPIPE ---
+// --- 5. НЕЙРОСЕТЬ MEDIAPIPE ---
 const pose = new Pose({locateFile: (file) => {
   return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
 }});
@@ -186,7 +188,6 @@ pose.setOptions({
 });
 
 pose.onResults((results) => {
-    // Подгоняем размер холста под экран
     if (canvasElement.width !== window.innerWidth || canvasElement.height !== window.innerHeight) {
         canvasElement.width = window.innerWidth;
         canvasElement.height = window.innerHeight;
@@ -195,7 +196,6 @@ pose.onResults((results) => {
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     
-    // Математика для растягивания видео без искажений пропорций (object-fit: cover)
     let videoRatio = results.image.width / results.image.height;
     let canvasRatio = canvasElement.width / canvasElement.height;
     let sx, sy, sw, sh;
@@ -212,11 +212,9 @@ pose.onResults((results) => {
         sy = 0;
     }
 
-    // Рисуем обрезанное видео на весь экран
     canvasCtx.drawImage(results.image, sx, sy, sw, sh, 0, 0, canvasElement.width, canvasElement.height);
     canvasCtx.restore();
 
-    // Проверка позы
     if (gameStarted && !isGameOver && results.poseLandmarks) {
         let currentLevelConfig = levels[currentLevelIndex];
         let isPoseCorrect = currentLevelConfig.checkPose(results.poseLandmarks);
@@ -224,17 +222,15 @@ pose.onResults((results) => {
         if (isPoseCorrect) {
             clearInterval(timerInterval);
             
-            // Победный звук (двойной дзинь)
             playBeep(800, 0.2, 'sine');
             setTimeout(() => playBeep(1000, 0.3, 'sine'), 150);
             
-            // Переход на следующий уровень
             startLevel(currentLevelIndex + 1);
         }
     }
 });
 
-// --- 7. ЗАПУСК КАМЕРЫ ---
+// --- 6. ЗАПУСК КАМЕРЫ ---
 const camera = new Camera(videoElement, {
   onFrame: async () => {
     await pose.send({image: videoElement});
