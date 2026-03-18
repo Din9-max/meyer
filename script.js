@@ -165,6 +165,49 @@ const levels = [
             // Поза засчитывается только если все 4 условия выполнены
             return armsSpread && handsBelowShoulders && torsoLeaning && kneesBent;
         }
+    },
+    {
+        // УРОВЕНЬ 5: Отклонение назад с поднятой рукой (Динамичная поза)
+        image: "pose5.png", // Не забудь подготовить картинку
+        timeAllowed: 15,    
+        checkPose: function(landmarks) {
+            const ls = landmarks[11], rs = landmarks[12]; // Плечи
+            const lw = landmarks[15], rw = landmarks[16]; // Запястья
+            const lh = landmarks[23], rh = landmarks[24]; // Бедра
+            const la = landmarks[27], ra = landmarks[28]; // Лодыжки
+
+            const pointsToCheck = [ls, rs, lw, rw, lh, rh, la, ra];
+            for (let i = 0; i < pointsToCheck.length; i++) {
+                // Оставляем порог 0.4, так как при повороте боком часть точек может перекрываться
+                if (pointsToCheck[i].visibility < 0.4) return false; 
+            }
+
+            function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
+            
+            // Длина туловища как основная единица измерения
+            const torsoLength = (distance(ls, lh) + distance(rs, rh)) / 2;
+
+            // --- УСЛОВИЕ 1: Правая рука высоко поднята ---
+            // Правое запястье должно быть не просто выше плеча, а значительно выше (минимум на полкорпуса)
+            const rightArmUp = rw.y < (rs.y - torsoLength * 0.4);
+
+            // --- УСЛОВИЕ 2: Левая рука опущена ---
+            // Левое запястье должно быть ниже уровня бедер
+            const leftArmDown = lw.y > lh.y;
+
+            // --- УСЛОВИЕ 3: Отклонение корпуса (Прогиб) ---
+            // Центр между плечами смещен по горизонтали относительно центра таза.
+            // При отклонении назад (или сильном наклоне) это расстояние увеличивается.
+            const midShoulderX = (ls.x + rs.x) / 2;
+            const midHipX = (lh.x + rh.x) / 2;
+            const leaning = Math.abs(midShoulderX - midHipX) > (torsoLength * 0.25);
+
+            // --- УСЛОВИЕ 4: Широкая стойка ---
+            // Расстояние между лодыжками по оси X должно быть большим
+            const legsApart = Math.abs(la.x - ra.x) > (torsoLength * 0.7);
+
+            return rightArmUp && leftArmDown && leaning && legsApart;
+        }
     }
 ];
 
