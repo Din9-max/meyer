@@ -1,39 +1,41 @@
 body {
     margin: 0;
     padding: 0;
-    font-family: 'Arial', sans-serif;
-    background-color: #ffffff; 
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    background-color: #fafafa;
     width: 100vw;
     height: 100vh;
     overflow: hidden;
+    color: #333;
 }
 
 #outputCanvas {
-    /* Холст занимает весь экран */
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    /* object-fit: cover больше не нужен, мы решим проблему через JS */
-    transform: scaleX(-1); /* Отражаем зеркально */
-    z-index: 1; /* Самый нижний слой */
+    transform: scaleX(-1);
+    z-index: 1;
 }
 
-#silhouette {
+/* Контейнер для картинки с аккуратной серой рамкой */
+#silhouette-container {
     position: absolute;
     top: 30px;
     left: 30px;
-    width: 250px; /* Сделали немного крупнее для полного экрана */
+    z-index: 10;
+    background: #ffffff;
+    padding: 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+}
+
+#silhouette {
+    width: 200px;
     height: auto;
-    background: transparent;
-    
-    /* ГАРАНТИЯ ВИДИМОСТИ */
-    z-index: 10; /* Намного выше холста */
-    display: block !important; /* Гарантируем, что он не скрыт */
-    
-    /* Добавим легкую белую обводку, чтобы силуэт был виден, если вдруг фон видео станет темным */
-    filter: drop-shadow(0 0 2px rgba(255,255,255,0.8));
+    display: block;
 }
 
 #timer {
@@ -42,27 +44,79 @@ body {
     right: 30px;
     font-size: 48px;
     font-weight: bold;
-    color: #000000;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 15px 30px;
+    color: #222;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 15px 35px;
     border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    z-index: 10; /* На одном уровне с силуэтом */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    z-index: 10;
+    transition: color 0.3s ease;
 }
 
-/* Стили для окна проигрыша */
-#gameOverScreen {
+/* Класс для таймера, когда остается мало времени */
+#timer.danger {
+    color: #e74c3c; /* Красный цвет */
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* Оформление модальных окон (старт и проигрыш) */
+.modal-overlay {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(255, 255, 255, 0.95);
+    background-color: rgba(250, 250, 250, 0.85);
+    backdrop-filter: blur(8px); /* Красивое размытие фона */
     display: flex;
-    flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 100; /* Поверх всего */
+    z-index: 100;
 }
 
-#gameOverScreen h2 { font-size: 64px; margin-bottom: 20px; color: #000; }
+.modal-content {
+    background: #ffffff;
+    padding: 50px;
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    text-align: center;
+    max-width: 400px;
+}
+
+.modal-content h2 {
+    margin-top: 0;
+    font-size: 32px;
+    color: #111;
+}
+
+.modal-content p {
+    font-size: 18px;
+    line-height: 1.5;
+    color: #666;
+    margin-bottom: 30px;
+}
+
 .hidden { display: none !important; }
-button { padding: 20px 50px; font-size: 28px; background-color: #000000; color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s; }
-button:hover { background-color: #333333; }
+
+button {
+    padding: 16px 40px;
+    font-size: 20px;
+    background-color: #222;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.1s;
+    font-weight: 500;
+}
+
+button:hover {
+    background-color: #444;
+}
+
+button:active {
+    transform: scale(0.98);
+}
