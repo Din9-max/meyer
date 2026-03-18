@@ -39,63 +39,87 @@ const levels = [
         image: "pose1.png",
         timeAllowed: 20,    
         checkPose: function(landmarks) {
-            const ls = landmarks[11], rs = landmarks[12]; // Плечи
-            const lw = landmarks[15], rw = landmarks[16]; // Запястья 
-            const lh = landmarks[23], rh = landmarks[24]; // Бедра
-            const ra = landmarks[28]; // Правая лодыжка
+            const leftShoulder = landmarks[11], rightShoulder = landmarks[12];
+            const leftWrist = landmarks[15], rightWrist = landmarks[16]; 
+            const leftHip = landmarks[23], rightHip = landmarks[24];
+            const rightAnkle = landmarks[28], rightFoot = landmarks[32];  
 
-            const pointsToCheck = [ls, rs, lw, rw, lh, rh, ra];
+            const pointsToCheck = [leftShoulder, rightShoulder, leftWrist, rightWrist, leftHip, rightHip, rightAnkle, rightFoot];
             for (let i = 0; i < pointsToCheck.length; i++) {
                 if (pointsToCheck[i].visibility < 0.5) return false; 
             }
 
-            function distance2D(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
-            const bodyScale = (distance2D(ls, rs) + distance2D(lh, rh)) / 2;
+            function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
+            const bodyScale = (distance(leftShoulder, rightShoulder) + distance(leftHip, rightHip)) / 2;
 
-            const wristAboveShoulder = lw.y < ls.y;
-            const wristVerticallyAligned = Math.abs(lw.x - ls.x) < (bodyScale * 0.5);
-            const rightWristBelowHip = rw.y > rh.y;
-            const rightWristCloseToFoot = distance2D(rw, ra) < (bodyScale * 2.0);
-            const shouldersAlignedCorrectly = ls.y < rs.y;
+            const wristAboveShoulder = leftWrist.y < leftShoulder.y;
+            const wristVerticallyAligned = Math.abs(leftWrist.x - leftShoulder.x) < (bodyScale * 0.5);
+            const rightWristBelowHip = rightWrist.y > rightHip.y;
+            const rightWristCloseToFoot = distance(rightWrist, rightAnkle) < (bodyScale * 2.0);
+            const shouldersAlignedCorrectly = leftShoulder.y < rightShoulder.y;
 
             return wristAboveShoulder && wristVerticallyAligned && rightWristBelowHip && rightWristCloseToFoot && shouldersAlignedCorrectly;
         }
     },
     {
-        // УРОВЕНЬ 2: Уверенная стойка, КОРПУС ПОВЕРНУТ ВПРАВО
-        image: "pose2.png", // <--- Здесь должна быть картинка стойки с легким поворотом
+        // УРОВЕНЬ 2: Уверенная А-стойка
+        image: "pose2.png", 
         timeAllowed: 15,    
         checkPose: function(landmarks) {
-            const ls = landmarks[11], rs = landmarks[12]; // Плечи
-            const lw = landmarks[15], rw = landmarks[16]; // Запястья
-            const lh = landmarks[23], rh = landmarks[24]; // Бедра
-            const la = landmarks[27], ra = landmarks[28]; // Лодыжки
+            const leftShoulder = landmarks[11], rightShoulder = landmarks[12];
+            const leftWrist = landmarks[15], rightWrist = landmarks[16];
+            const leftHip = landmarks[23], rightHip = landmarks[24];
+            const leftAnkle = landmarks[27], rightAnkle = landmarks[28];
 
-            // 1. Базовая проверка видимости (чтобы все ключевые точки были в кадре)
-            const pointsToCheck = [ls, rs, lw, rw, lh, rh, la, ra];
-            for (let point of pointsToCheck) {
-                if (point.visibility < 0.5) return false;
+            const pointsToCheck = [leftShoulder, rightShoulder, leftWrist, rightWrist, leftHip, rightHip, leftAnkle, rightAnkle];
+            for (let i = 0; i < pointsToCheck.length; i++) {
+                if (pointsToCheck[i].visibility < 0.5) return false;
             }
 
-            // 2. Базовая стойка (как на фото)
-            // Спина прямая (плечи выше бедер)
-            const torsoUpright = (ls.y < lh.y) && (rs.y < rh.y);
-            // Руки опущены вниз (запястья ниже плеч)
-            const armsDown = (lw.y > ls.y) && (rw.y > rs.y);
-            // Ноги расставлены (расстояние между лодыжками по X больше, чем между бедрами)
-            const legsApart = Math.abs(la.x - ra.x) > (Math.abs(lh.x - rh.x) * 1.5);
-            // Руки разведены не слишком широко (допуск 1.3 * ширина бедер)
-            const armsCorrectWidth = Math.abs(lw.x - rw.x) < (Math.abs(lh.x - rh.x) * 1.3);
+            const torsoUpright = (leftShoulder.y < leftHip.y) && (rightShoulder.y < rightHip.y);
+            const armsDown = (leftWrist.y > leftShoulder.y) && (rightWrist.y > rightShoulder.y);
+            
+            const anklesDistanceX = Math.abs(leftAnkle.x - rightAnkle.x);
+            const hipsDistanceX = Math.abs(leftHip.x - rightHip.x);
+            const legsApart = anklesDistanceX > (hipsDistanceX * 1.5);
 
-            // 3. ПОВОРОТ КОРПУСА ВПРАВО (Ключевое изменение)
-            // Сравниваем Z-координаты плеч. Z — это глубина (чем меньше, тем ближе к камере).
-            // При повороте вправо ЛЕВОЕ плечо (11) должно быть ближе к камере,
-            // а ПРАВОЕ плечо (12) — дальше.
-            // Добавим допуск (0.05), чтобы избежать срабатывания на шум камеры.
-            const turnedRight = (rs.z - ls.z) > 0.05;
+            const wristsDistanceX = Math.abs(leftWrist.x - rightWrist.x);
+            const armsSlightlyOut = wristsDistanceX > (hipsDistanceX * 1.2);
 
-            // Возвращаем true, только если выполнены ВСЕ условия
-            return torsoUpright && armsDown && legsApart && armsCorrectWidth && turnedRight;
+            return torsoUpright && armsDown && legsApart && armsSlightlyOut;
+        }
+    },
+    {
+        // УРОВЕНЬ 3: Правая рука на талии, левая вытянута
+        image: "pose3.png", // Подготовь картинку pose3.png
+        timeAllowed: 12,    // Времени еще меньше, игра ускоряется!
+        checkPose: function(landmarks) {
+            const ls = landmarks[11], rs = landmarks[12]; 
+            const lw = landmarks[15], rw = landmarks[16]; 
+            const lh = landmarks[23], rh = landmarks[24]; 
+            const la = landmarks[27], ra = landmarks[28]; 
+
+            const pointsToCheck = [ls, rs, lw, rw, lh, rh, la, ra];
+            for (let i = 0; i < pointsToCheck.length; i++) {
+                if (pointsToCheck[i].visibility < 0.5) return false;
+            }
+
+            function distance(p1, p2) { return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2)); }
+            const bodyScale = (distance(ls, rs) + distance(lh, rh)) / 2;
+
+            // Правая рука на талии (близко к правому бедру)
+            const rightHandOnHip = distance(rw, rh) < (bodyScale * 0.7);
+
+            // Левая рука вытянута (далеко от плеча по горизонтали)
+            const leftArmExtended = Math.abs(lw.x - ls.x) > (bodyScale * 0.8);
+            
+            // Левая рука поднята (не ниже уровня плеча + небольшой допуск)
+            const leftArmUp = lw.y < (ls.y + bodyScale * 0.2);
+
+            // Ноги в широком выпаде
+            const legsApart = Math.abs(la.x - ra.x) > (bodyScale * 0.9);
+
+            return rightHandOnHip && leftArmExtended && leftArmUp && legsApart;
         }
     }
 ];
