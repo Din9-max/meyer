@@ -15,7 +15,7 @@
         <div class="modal-content">
             <h2>Повтори позу</h2>
             <p>Включай камеру, отойди подальше, чтобы тебя было видно в полный рост, и постарайся в точности повторить черный силуэт на экране.</p>
-            <p>С каждым разом времени будет все меньше!</p>
+            <p>С каждым уровнем времени будет даваться всё меньше!</p>
             <button id="startBtn">Начать игру</button>
         </div>
     </div>
@@ -29,13 +29,17 @@
     </div>
 
     <div class="game-container">
+        
+        <div id="levelIndicator">Уровень 1 / ?</div>
+
         <div id="silhouette-container">
-            <img id="silhouette" src="" alt="Поза">
+            <img id="silhouette" src="" alt="Поза для повторения">
         </div>
         
         <div id="timer">Ожидание...</div>
 
         <video id="videoElement" autoplay playsinline style="display: none;"></video>
+        
         <canvas id="outputCanvas"></canvas>
     </div>
 
