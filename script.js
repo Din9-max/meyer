@@ -1,16 +1,41 @@
-// --- 1. ПОЛУЧАЕМ ЭЛЕМЕНТЫ ---
 const videoElement = document.getElementById('videoElement');
 const canvasElement = document.getElementById('outputCanvas');
 const canvasCtx = canvasElement.getContext('2d');
 const silhouetteImg = document.getElementById('silhouette');
 const timerDiv = document.getElementById('timer');
+
+const startScreen = document.getElementById('startScreen');
 const gameOverScreen = document.getElementById('gameOverScreen');
+const startBtn = document.getElementById('startBtn');
 const restartBtn = document.getElementById('restartBtn');
 
-// --- 2. МАССИВ С УРОВНЯМИ (Математика позы Триконасана) ---
+// --- ГЕНЕРАТОР ЗВУКА ---
+// Создаем аудио-контекст для синтеза звуков
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playBeep(frequency, duration, type = 'sine') {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+    
+    // Делаем звук тихим и приятным
+    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + duration);
+}
+
+// --- МАССИВ С УРОВНЯМИ ---
 const levels = [
     {
-        image: "pose1.png", // Твоя картинка с черным силуэтом позы
+        image: "pose1.png",
         timeAllowed: 20,    
         checkPose: function(landmarks) {
             const leftShoulder = landmarks[11];
@@ -36,10 +61,10 @@ const levels = [
             const bodyScale = (distShoulders + distHips) / 2;
 
             const wristAboveShoulder = leftWrist.y < leftShoulder.y;
-            const wristVerticallyAligned = Math.abs(leftWrist.x - leftShoulder.x) < (bodyScale * 0.5); // Немного увеличили допуск для теста
+            const wristVerticallyAligned = Math.abs(leftWrist.x - leftShoulder.x) < (bodyScale * 0.5);
             const rightWristBelowHip = rightWrist.y > rightHip.y;
             const distWristToAnkle = distance(rightWrist, rightAnkle);
-            const rightWristCloseToFoot = distWristToAnkle < (bodyScale * 2.0); // Увеличили допуск (с 1.5 до 2.0)
+            const rightWristCloseToFoot = distWristToAnkle < (bodyScale * 2.0);
             const shouldersAlignedCorrectly = leftShoulder.y < rightShoulder.y;
 
             return wristAboveShoulder && wristVerticallyAligned && rightWristBelowHip && rightWristCloseToFoot && shouldersAlignedCorrectly;
@@ -47,15 +72,17 @@ const levels = [
     }
 ];
 
-// --- 3. УПРАВЛЕНИЕ ИГРОЙ ---
+// --- УПРАВЛЕНИЕ ИГРОЙ ---
 let currentLevelIndex = 0;
 let timeLeft = 0;
 let timerInterval;
 let isGameOver = false;
+let gameStarted = false; // Флаг, началась ли игра после нажатия кнопки
 
 function startLevel(index) {
     if (index >= levels.length) {
         timerDiv.innerText = "ПОБЕДА!";
+        timerDiv.classList.remove('danger');
         isGameOver = true;
         return;
     }
@@ -63,11 +90,25 @@ function startLevel(index) {
     let levelConfig = levels[currentLevelIndex];
     silhouetteImg.src = levelConfig.image;
     timeLeft = levelConfig.timeAllowed;
-    timerDiv.innerText = timeLeft;
+    
+    updateTimerDisplay();
+    
     clearInterval(timerInterval);
     timerInterval = setInterval(() => {
         timeLeft--;
-        timerDiv.innerText = timeLeft;
+        updateTimerDisplay();
+        
+        // Звуковое сопровождение
+        if (timeLeft > 0) {
+            if (timeLeft <= 10) {
+                // Последние 10 секунд: тревожный звук (высокий тон)
+                playBeep(600, 0.15, 'triangle');
+            } else {
+                // Обычный тик (спокойный тон)
+                playBeep(400, 0.1, 'sine');
+            }
+        }
+        
         if (timeLeft <= 0) {
             clearInterval(timerInterval);
             loseGame();
@@ -75,10 +116,34 @@ function startLevel(index) {
     }, 1000);
 }
 
+function updateTimerDisplay() {
+    timerDiv.innerText = timeLeft;
+    // Если 10 секунд и меньше, добавляем красный цвет
+    if (timeLeft <= 10) {
+        timerDiv.classList.add('danger');
+    } else {
+        timerDiv.classList.remove('danger');
+    }
+}
+
 function loseGame() {
     isGameOver = true;
+    timerDiv.innerText = "0";
+    // Звук проигрыша (низкий гудок)
+    playBeep(200, 0.5, 'sawtooth');
     gameOverScreen.classList.remove('hidden');
 }
+
+// --- КНОПКИ ИНТЕРФЕЙСА ---
+
+startBtn.addEventListener('click', () => {
+    // Браузер требует клика для включения звука
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    
+    startScreen.classList.add('hidden');
+    gameStarted = true;
+    startLevel(0);
+});
 
 restartBtn.addEventListener('click', () => {
     gameOverScreen.classList.add('hidden');
@@ -86,7 +151,7 @@ restartBtn.addEventListener('click', () => {
     startLevel(0);
 });
 
-// --- 4. НЕЙРОСЕТЬ MEDIAPIPE (С исправлением растягивания) ---
+// --- НЕЙРОСЕТЬ MEDIAPIPE ---
 const pose = new Pose({locateFile: (file) => {
   return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
 }});
@@ -99,58 +164,52 @@ pose.setOptions({
 });
 
 pose.onResults((results) => {
-    // --- МАГИЯ ИСПРАВЛЕНИЯ РАСТЯГИВАНИЯ ---
-    // Мы принудительно меняем ВНУТРЕННИЙ размер холста, чтобы он совпал с размером окна браузера
     if (canvasElement.width !== window.innerWidth || canvasElement.height !== window.innerHeight) {
         canvasElement.width = window.innerWidth;
         canvasElement.height = window.innerHeight;
     }
-    // -------------------------------------
 
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     
-    // Рисуем видео, растягивая его на весь холст (object-fit: cover аналог в JS)
-    // Для этого используем сложный вариант drawImage
     let videoRatio = results.image.width / results.image.height;
     let canvasRatio = canvasElement.width / canvasElement.height;
     let sx, sy, sw, sh;
 
     if (canvasRatio > videoRatio) {
-        // Холст шире, чем видео (обрезаем верх и низ видео)
         sw = results.image.width;
         sh = sw / canvasRatio;
         sx = 0;
         sy = (results.image.height - sh) / 2;
     } else {
-        // Холст уже, чем видео (обрезаем бока видео)
         sh = results.image.height;
         sw = sh * canvasRatio;
         sx = (results.image.width - sw) / 2;
         sy = 0;
     }
 
-    // Рисуем только обрезанную часть видео, растягивая её на весь холст
     canvasCtx.drawImage(results.image, sx, sy, sw, sh, 0, 0, canvasElement.width, canvasElement.height);
     canvasCtx.restore();
 
-    if (!isGameOver && results.poseLandmarks) {
+    // Проверяем позу, только если игра началась (нажали кнопку) и не проиграли
+    if (gameStarted && !isGameOver && results.poseLandmarks) {
         let currentLevelConfig = levels[currentLevelIndex];
         let isPoseCorrect = currentLevelConfig.checkPose(results.poseLandmarks);
         if (isPoseCorrect) {
             clearInterval(timerInterval);
+            // Победный приятный звук
+            playBeep(800, 0.2, 'sine');
+            setTimeout(() => playBeep(1000, 0.3, 'sine'), 150);
+            
             startLevel(currentLevelIndex + 1);
         }
     }
 });
 
-// --- 5. ЗАПУСК КАМЕРЫ ---
-// Убрали жесткие 640x480 при запуске, пусть камера даст максимальное разрешение
+// Запускаем только захват камеры (сама игра ждет нажатия кнопки "Начать")
 const camera = new Camera(videoElement, {
   onFrame: async () => {
     await pose.send({image: videoElement});
   }
 });
 camera.start();
-
-startLevel(0);
