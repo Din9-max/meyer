@@ -3,51 +3,54 @@ body {
     padding: 0;
     font-family: 'Arial', sans-serif;
     background-color: #ffffff; 
-    /* Убираем центрирование, так как теперь игра занимает всё пространство */
     width: 100vw;
     height: 100vh;
-    overflow: hidden; /* Убираем случайные полосы прокрутки */
+    overflow: hidden;
 }
 
-.game-container {
-    position: relative;
-    width: 100vw;  /* Ширина 100% от экрана */
-    height: 100vh; /* Высота 100% от экрана */
-    /* Мы убрали скругление углов и тени, так как они не нужны в полноэкранном режиме */
+#outputCanvas {
+    /* Холст занимает весь экран */
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* object-fit: cover больше не нужен, мы решим проблему через JS */
+    transform: scaleX(-1); /* Отражаем зеркально */
+    z-index: 1; /* Самый нижний слой */
 }
 
 #silhouette {
     position: absolute;
     top: 30px;
     left: 30px;
-    width: 200px; /* Сделали силуэт немного больше, раз экран теперь большой */
+    width: 250px; /* Сделали немного крупнее для полного экрана */
     height: auto;
-    z-index: 10;
     background: transparent;
+    
+    /* ГАРАНТИЯ ВИДИМОСТИ */
+    z-index: 10; /* Намного выше холста */
+    display: block !important; /* Гарантируем, что он не скрыт */
+    
+    /* Добавим легкую белую обводку, чтобы силуэт был виден, если вдруг фон видео станет темным */
+    filter: drop-shadow(0 0 2px rgba(255,255,255,0.8));
 }
 
 #timer {
     position: absolute;
     top: 30px;
     right: 30px;
-    font-size: 40px; /* Увеличили шрифт таймера */
+    font-size: 48px;
     font-weight: bold;
     color: #000000;
-    z-index: 10;
     background: rgba(255, 255, 255, 0.9);
     padding: 15px 30px;
     border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1); /* Добавили легкую тень для таймера, чтобы он выделялся на фоне видео */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    z-index: 10; /* На одном уровне с силуэтом */
 }
 
-#outputCanvas {
-    width: 100%;
-    height: 100%;
-    object-fit: cover; /* Эта команда делает так, чтобы видео заполняло весь экран без искажения пропорций (лишние края просто обрежутся) */
-    transform: scaleX(-1); /* Отражаем как в зеркале */
-}
-
-/* Стили для окна проигрыша остаются почти такими же */
+/* Стили для окна проигрыша */
 #gameOverScreen {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
@@ -56,29 +59,10 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    z-index: 20;
+    z-index: 100; /* Поверх всего */
 }
 
-#gameOverScreen h2 {
-    font-size: 48px;
-    margin-bottom: 20px;
-}
-
-.hidden {
-    display: none !important;
-}
-
-button {
-    padding: 15px 40px;
-    font-size: 24px;
-    background-color: #000000; 
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: 0.3s;
-}
-
-button:hover {
-    background-color: #333333;
-}
+#gameOverScreen h2 { font-size: 64px; margin-bottom: 20px; color: #000; }
+.hidden { display: none !important; }
+button { padding: 20px 50px; font-size: 28px; background-color: #000000; color: white; border: none; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+button:hover { background-color: #333333; }
