@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Игра: Повтори Позу</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+</head>
+<body>
+
+    <div class="game-container">
+        <img id="silhouette" src="" alt="Повтори эту позу">
+        
+        <div id="timer">Ожидание...</div>
+
+        <video id="videoElement" autoplay playsinline style="display: none;"></video>
+        
+        <canvas id="outputCanvas" width="640" height="480"></canvas>
+    </div>
+
+    <div id="gameOverScreen" class="hidden">
+        <h2>Ты проиграл!</h2>
+        <button id="restartBtn">Попробовать снова</button>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
